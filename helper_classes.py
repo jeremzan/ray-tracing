@@ -70,7 +70,7 @@ class SpotLight(LightSource):
         super().__init__(intensity)
         # TODO
 
-    # This function returns the ray that goes from the light source to a point
+    # This function returns the ray that goes from a point to the light source
     def get_light_ray(self, intersection):
         #TODO
         pass
