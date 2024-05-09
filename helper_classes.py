@@ -24,22 +24,20 @@ class DirectionalLight(LightSource):
 
     def __init__(self, intensity, direction):
         super().__init__(intensity)
-        # TODO
+        self.direction = normalize(direction)
 
     # This function returns the ray that goes from a point to the light source
     def get_light_ray(self,intersection_point):
-        # TODO
-        return Ray()
+        return Ray(intersection_point,-self.direction)
 
     # This function returns the distance from a point to the light source
     def get_distance_from_light(self, intersection):
-        #TODO
-        pass
+        return np.inf
+
 
     # This function returns the light intensity at a point
     def get_intensity(self, intersection):
-        #TODO
-        pass
+        return self.intensity
 
 
 class PointLight(LightSource):
@@ -144,12 +142,26 @@ class Triangle(Object3D):
 
     # computes normal to the trainagle surface. Pay attention to its direction!
     def compute_normal(self):
-        # TODO
-        pass
+        return normalize(np.cross(self.c - self.b, self.a - self.b))
 
     def intersect(self, ray: Ray):
-        # TODO
-        pass
+        plane_formula = Plane(self.normal, self.a)
+        intersection = plane_formula.intersect(ray)
+
+        if intersection is None:
+            return None
+        
+        else :
+            p = ray.origin + ray.direction * intersection[0]
+            areaABC = np.linalg.norm(np.cross((self.b - self.a), (self.c - self.a))) / 2
+            alpha = np.linalg.norm(np.cross((p - self.b), (p - self.c))) / (2 * areaABC)
+            beta = np.linalg.norm(np.cross((p - self.c), (p - self.a))) / (2 * areaABC)
+            gamma = np.linalg.norm(np.cross((p - self.a), (p - self.b))) / (2 * areaABC)
+
+            if alpha >= 0 and alpha <= 1 and beta >= 0 and beta <= 1 and gamma >= 0 and gamma <= 1 and np.abs(alpha + beta + gamma - 1) <= 1e-6 :
+                return intersection[0], self
+            else:
+                return None
 
 class Pyramid(Object3D):
     """     

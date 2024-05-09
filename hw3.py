@@ -25,7 +25,6 @@ def render_scene(camera, ambient, lights, objects, screen_size, max_depth):
     return image
 
 
-
 def calc_ambient(material_ambient, global_ambient):
     return material_ambient * global_ambient
 
@@ -42,7 +41,7 @@ def get_color(hit_object, hit_point, ray, objects, lights, ambient, depth, max_d
         return np.zeros(3)
 
     normal = hit_object.normal if hasattr(hit_object, 'normal') else normalize(hit_point - hit_object.center)
-    view_dir = normalize(-ray.direction)
+    view_dir = -ray.direction
 
     # Apply epsilon offset above the surface
     offset_point = hit_point + normalize(normal) * epsilon
@@ -51,12 +50,14 @@ def get_color(hit_object, hit_point, ray, objects, lights, ambient, depth, max_d
 
     for light in lights:
         light_ray = light.get_light_ray(offset_point)
-        shadow_obj, shadow_dist = light_ray.nearest_intersected_object(objects)
-        if shadow_obj is None or shadow_dist > light.get_distance_from_light(offset_point):
-            light_intensity = light.get_intensity(offset_point)
-            light_dir = normalize(light_ray.direction)
-            color += calc_diffuse(hit_object.diffuse, light_intensity, normal, light_dir)
-            color += calc_specular(hit_object.specular, light_intensity, view_dir, normal, light_dir, hit_object.shininess)
+        _ , shadow_dist = light_ray.nearest_intersected_object(objects)
+        if shadow_dist < light.get_distance_from_light(offset_point):
+            continue
+        
+        light_intensity = light.get_intensity(offset_point)
+        light_dir = normalize(light_ray.direction)
+        color += calc_diffuse(hit_object.diffuse, light_intensity, normal, light_dir)
+        color += calc_specular(hit_object.specular, light_intensity, view_dir, normal, light_dir, hit_object.shininess)
 
     if hit_object.reflection > 0 and depth + 1 < max_depth:
         reflect_dir = reflected(ray.direction, normal)
