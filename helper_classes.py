@@ -65,20 +65,30 @@ class PointLight(LightSource):
 class SpotLight(LightSource):
     def __init__(self, intensity, position, direction, kc, kl, kq):
         super().__init__(intensity)
-        # TODO
+        self.position = np.array(position)
+        self.direction = normalize(direction)
+        self.kc = kc
+        self.kl = kl
+        self.kq = kq
 
     # This function returns the ray that goes from a point to the light source
     def get_light_ray(self, intersection):
         #TODO
-        pass
+        return Ray(intersection, normalize(self.position - intersection))
+
 
     def get_distance_from_light(self, intersection):
         #TODO
-        pass
+        return np.linalg.norm(intersection - self.position)
+
 
     def get_intensity(self, intersection):
         #TODO
-        pass
+        d = self.get_distance_from_light(intersection)
+        f_att = 1 / (self.kc + self.kl*d + self.kq * (d**2))
+        V = normalize(self.get_light_ray(intersection).direction)
+
+        return self.intensity * f_att * np.dot(V, -self.direction)
 
 
 class Ray:
@@ -123,6 +133,8 @@ class Plane(Object3D):
         else:
             return None
 
+    def get_normal(self, hit_point):
+        return self.normal
 
 class Triangle(Object3D):
     """
@@ -142,7 +154,7 @@ class Triangle(Object3D):
 
     # computes normal to the trainagle surface. Pay attention to its direction!
     def compute_normal(self):
-        return normalize(np.cross(self.c - self.b, self.a - self.b))
+        return normalize(np.cross(self.b - self.a, self.c - self.a))
 
     def intersect(self, ray: Ray):
         plane_formula = Plane(self.normal, self.a)
@@ -162,6 +174,9 @@ class Triangle(Object3D):
                 return intersection[0], self
             else:
                 return None
+
+    def get_normal(self, hit_point):
+        return self.normal
 
 class Pyramid(Object3D):
     """     
@@ -202,23 +217,60 @@ A /&&&&&&&&&&&&&&&&&&&&\ B &&&/ C
                  [4,1,0],
                  [4,2,1],
                  [2,4,0]]
-        # TODO
+        
+        for l_idx in t_idx:
+            triangle = Triangle(self.v_list[l_idx[0]], self.v_list[l_idx[1]], self.v_list[l_idx[2]])
+            l.append(triangle)
+            
         return l
 
     def apply_materials_to_triangles(self):
-        # TODO
-        pass
+        for triangle in self.triangle_list:
+            triangle.set_material(self.ambient, self.diffuse, self.specular, self.shininess, self.reflection)
 
     def intersect(self, ray: Ray):
-        # TODO
-        pass
+        min_intersection = None
+        for triangle in self.triangle_list:
+            intersection = triangle.intersect(ray)
+            if intersection is None:
+                continue
 
+            t, _ = intersection
+            if min_intersection == None or t < min_intersection[0]:
+                min_intersection = intersection
+                self.normal = triangle.compute_normal()
+                
+        return min_intersection
+    
+    def get_normal(self, hit_point):
+        return self.normal
+    
 class Sphere(Object3D):
     def __init__(self, center, radius: float):
         self.center = center
         self.radius = radius
 
     def intersect(self, ray: Ray):
-        #TODO
-        pass
+        ################## TODO ##################
+        # Ray origin to sphere center
+        L = self.center - ray.origin
+        # Distance from ray origin to the closest point on the ray to the sphere center
+        tca = np.dot(L, ray.direction)
+        d2 = np.dot(L, L) - tca * tca
+        # If the closest point is behind the ray
+        if d2 > self.radius ** 2:
+            return None
+        # Distance from the closest point to the intersection points
+        thc = np.sqrt(self.radius ** 2 - d2)
+        t0 = tca - thc
+        t1 = tca + thc
+        # If the intersection points are behind the ray
+        if t0 < 0:
+            t0 = t1
+        if t0 < 0:
+            return None
+        return t0, self
+    
+    def get_normal(self, hit_point):
+        return hit_point - self.center
 

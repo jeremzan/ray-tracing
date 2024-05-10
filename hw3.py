@@ -1,6 +1,6 @@
 from helper_classes import *
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def render_scene(camera, ambient, lights, objects, screen_size, max_depth):
@@ -9,64 +9,67 @@ def render_scene(camera, ambient, lights, objects, screen_size, max_depth):
     screen = (-1, 1 / ratio, 1, -1 / ratio)  # left, top, right, bottom
 
     image = np.zeros((height, width, 3))
+
     for i, y in enumerate(np.linspace(screen[1], screen[3], height)):
         for j, x in enumerate(np.linspace(screen[0], screen[2], width)):
+            # screen is on origin
             pixel = np.array([x, y, 0])
-            direction = normalize(pixel - camera)
-            ray = Ray(camera, direction)
+            origin = camera
+            direction = normalize(pixel - origin)
+            ray = Ray(origin, direction)
+            color = np.zeros(3)
             hit_object, min_distance = ray.nearest_intersected_object(objects)
-            if hit_object is not None:
-                hit_point = ray.origin + ray.direction * min_distance
-                color = get_color(hit_object, hit_point, ray, objects, lights, ambient, 0, max_depth)
-            else:
-                color = np.zeros(3)
+            if hit_object is None:
+                continue
+            hit_point = ray.origin + ray.direction * min_distance
+            offset_point = hit_point +  1e-2 * hit_object.get_normal(hit_point)
+            color = get_color(origin, ambient, lights, objects, hit_object, ray, offset_point, 0, max_depth)
+
+            # We clip the values between 0 and 1 so all pixel values will make sense.
             image[i, j] = np.clip(color, 0, 1)
 
     return image
 
 
-def calc_ambient(material_ambient, global_ambient):
-    return material_ambient * global_ambient
-
-def calc_diffuse(material_diffuse, light_intensity, normal, light_dir):
-    return material_diffuse * light_intensity * max(np.dot(normal, light_dir), 0)
-
-def calc_specular(material_specular, light_intensity, view_dir, normal, light_dir, shininess):
-    reflect_dir = reflected(-light_dir, normal)
-    return material_specular * light_intensity * max(np.dot(view_dir, reflect_dir), 0) ** shininess
+def calc_ambient_color(ambient, hit_object):
+    return ambient * hit_object.ambient
 
 
-def get_color(hit_object, hit_point, ray, objects, lights, ambient, depth, max_depth, epsilon=1e-5):
-    if hit_object is None:
-        return np.zeros(3)
 
-    normal = hit_object.normal if hasattr(hit_object, 'normal') else normalize(hit_point - hit_object.center)
-    view_dir = -ray.direction
+def calc_diffuse(hit_object, object_normal, light_direction, light_intensity):
+    return light_intensity * hit_object.diffuse * np.dot(object_normal, light_direction)
 
-    # Apply epsilon offset above the surface
-    offset_point = hit_point + normalize(normal) * epsilon
+def calc_specular(hit_object, light_intensity, view_direction, reflected_direction):
+    return light_intensity * hit_object.specular * (np.dot(view_direction, reflected_direction) ** hit_object.shininess)
+    
 
-    color = calc_ambient(hit_object.ambient, ambient)
+def get_color(origin, ambient, lights, objects, hit_object, ray, hit_point, depth, max_depth):
+    color = np.zeros(3)
+    color += calc_ambient_color(ambient, hit_object)
 
     for light in lights:
-        light_ray = light.get_light_ray(offset_point)
+        light_ray = light.get_light_ray(hit_point)
         _ , shadow_dist = light_ray.nearest_intersected_object(objects)
-        if shadow_dist < light.get_distance_from_light(offset_point):
+        if shadow_dist < light.get_distance_from_light(hit_point):
             continue
+
+        light_dir = light.get_light_ray(hit_point).direction
+        light_intensity = light.get_intensity(hit_point)
+        view_dir = normalize(origin - hit_point)
+        reflected_dir = reflected(-light_dir, hit_object.get_normal(hit_point))
         
-        light_intensity = light.get_intensity(offset_point)
-        light_dir = normalize(light_ray.direction)
-        color += calc_diffuse(hit_object.diffuse, light_intensity, normal, light_dir)
-        color += calc_specular(hit_object.specular, light_intensity, view_dir, normal, light_dir, hit_object.shininess)
+        color += calc_diffuse(hit_object, hit_object.get_normal(hit_point), light_dir, light_intensity)
+        color += calc_specular(hit_object, light_intensity, view_dir, reflected_dir)
 
-    if hit_object.reflection > 0 and depth + 1 < max_depth:
-        reflect_dir = reflected(ray.direction, normal)
-        reflect_ray = Ray(offset_point, reflect_dir)
-        nearest_reflected_obj, nearest_reflected_dist = reflect_ray.nearest_intersected_object(objects)
-        reflected_hit_point = reflect_ray.origin + reflect_ray.direction * nearest_reflected_dist
-        reflected_color = get_color(nearest_reflected_obj, reflected_hit_point, reflect_ray, objects, lights, ambient, depth + 1, max_depth)
-        color += reflected_color * hit_object.reflection
-
+    if depth + 1 < max_depth:
+        reflected_dir = reflected(ray.direction, hit_object.get_normal(hit_point))
+        reflected_ray = Ray(hit_point, reflected_dir)
+        new_hit_object, distance = reflected_ray.nearest_intersected_object(objects)
+        if new_hit_object is not None:
+            new_hit_point = reflected_ray.origin + reflected_ray.direction * distance
+            offset_point = new_hit_point + 1e-2 * new_hit_object.get_normal(new_hit_point)
+            reflected_color = get_color(origin, ambient, lights, objects, new_hit_object, reflected_ray, offset_point, depth+1, max_depth)
+            color += reflected_color * hit_object.reflection 
     return color
 
 
