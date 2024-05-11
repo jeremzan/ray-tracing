@@ -51,6 +51,7 @@ def get_color(origin, ambient, lights, objects, hit_object, ray, hit_point, dept
         light_ray = light.get_light_ray(hit_point)
         _ , shadow_dist = light_ray.nearest_intersected_object(objects)
         if shadow_dist < light.get_distance_from_light(hit_point):
+            color = np.zeros(3)
             continue
 
         light_dir = light.get_light_ray(hit_point).direction
