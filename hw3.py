@@ -76,9 +76,26 @@ def get_color(origin, ambient, lights, objects, hit_object, ray, hit_point, dept
 
 
 # Write your own objects and lights
-# TODO
 def your_own_scene():
-    camera = np.array([0,0,1])
-    lights = []
-    objects = []
+    camera = np.array([0, 0, 1])
+    
+    light1 = DirectionalLight(intensity=np.array([2, 2, 2]), direction=np.array([0.5, -0.5, -1]))  
+    light2 = PointLight(intensity=np.array([1, 1, 1]), position=np.array([2, 2, 1]), kc=1, kl=0.2, kq=0.1)  
+    lights = [light1, light2]
+
+
+    plane = Plane([0, 1, 0], [0, -1, 0])
+    plane.set_material([0.3, 0.5, 1], [0.3, 0.5, 1], [1, 1, 1], 100, 0.5)
+
+    triangle = Triangle([-0.25, 0, -1], [0.25, 0, -1], [0, 0.5, -1])
+    triangle.set_material([0, 1, 0], [0, 0.8, 0], [0.1, 0.1, 0.1], 30, 0.5)  # Reduced specular component and shininess
+
+    sphere1 = Sphere([-1.0, 0.15, -1], 0.25)
+    sphere1.set_material([1, 0, 0], [1, 0, 0], [0.3, 0.3, 0.3], 50, 0.5)
+    sphere2 = Sphere([1.0, 0.15, -1], 0.25)
+    sphere2.set_material([0, 0, 1], [0, 0, 1], [0.3, 0.3, 0.3], 50, 0.5)
+
+    objects = [plane, triangle, sphere1, sphere2]
     return camera, lights, objects
+
+
