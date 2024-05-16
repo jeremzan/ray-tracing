@@ -247,25 +247,19 @@ class Sphere(Object3D):
         self.radius = radius
 
     def intersect(self, ray: Ray):
-        ################## TODO ##################
-        # Ray origin to sphere center
-        L = self.center - ray.origin
-        # Distance from ray origin to the closest point on the ray to the sphere center
-        tca = np.dot(L, ray.direction)
-        d2 = np.dot(L, L) - tca * tca
-        # If the closest point is behind the ray
-        if d2 > self.radius ** 2:
+        center_to_origin = self.center - ray.origin
+        projection_length = np.dot(center_to_origin, ray.direction)
+        perpendicular_distance_squared = np.dot(center_to_origin, center_to_origin) - projection_length * projection_length
+        if perpendicular_distance_squared > self.radius ** 2:
             return None
-        # Distance from the closest point to the intersection points
-        thc = np.sqrt(self.radius ** 2 - d2)
-        t0 = tca - thc
-        t1 = tca + thc
-        # If the intersection points are behind the ray
-        if t0 < 0:
-            t0 = t1
-        if t0 < 0:
+        half_chord_length = np.sqrt(self.radius ** 2 - perpendicular_distance_squared)
+        first_intersection_point = projection_length - half_chord_length
+        second_intersection_point2 = projection_length + half_chord_length
+        if first_intersection_point < 0:
+            intersection_point1 = second_intersection_point2
+        if first_intersection_point < 0:
             return None
-        return t0, self
+        return first_intersection_point, self
     
     def get_normal(self, hit_point):
         return hit_point - self.center

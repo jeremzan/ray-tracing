@@ -24,7 +24,6 @@ def render_scene(camera, ambient, lights, objects, screen_size, max_depth):
             hit_point = ray.origin + ray.direction * min_distance
             offset_point = hit_point +  1e-2 * hit_object.get_normal(hit_point)
             color = get_color(origin, ambient, lights, objects, hit_object, ray, offset_point, 0, max_depth)
-
             # We clip the values between 0 and 1 so all pixel values will make sense.
             image[i, j] = np.clip(color, 0, 1)
 
@@ -33,8 +32,6 @@ def render_scene(camera, ambient, lights, objects, screen_size, max_depth):
 
 def calc_ambient_color(ambient, hit_object):
     return ambient * hit_object.ambient
-
-
 
 def calc_diffuse(hit_object, object_normal, light_direction, light_intensity):
     return light_intensity * hit_object.diffuse * np.dot(object_normal, light_direction)
